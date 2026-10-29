@@ -96,10 +96,54 @@ export async function fetchModels(gatewayUrl: string): Promise<ModelEntry[]> {
     throw new Error(`Magpie returned an unexpected model list for ${url}.`);
   }
 
-  return parsed.data
-    .map((item) => parseModel(item))
-    .filter((item): item is ModelEntry => item !== undefined)
-    .sort(compareModels);
+  return dedupeModels(
+    parsed.data
+      .map((item) => parseModel(item))
+      .filter((item): item is ModelEntry => item !== undefined)
+  ).sort(compareModels);
+}
+
+/**
+ * Magpie serves the same entry under several ids: models come as
+ * `provider/model` plus a short alias (`poolside/laguna-s-2.1:free`,
+ * `deepseek-v4-1-flash`), and routing groups come as `auto/<name>` plus a bare
+ * alias. Keep the most canonical id per (provider, display name) so the picker
+ * lists each entry once.
+ */
+function dedupeModels(models: ModelEntry[]): ModelEntry[] {
+  const kept = new Map<string, number>();
+  const result: ModelEntry[] = [];
+
+  for (const model of models) {
+    const kind = model.isGroup ? 'group' : 'model';
+    const name = model.displayName.trim().toLowerCase() || model.id.toLowerCase();
+    const key = `${kind}\u0000${model.provider}\u0000${name}`;
+    const existingIndex = kept.get(key);
+
+    if (existingIndex === undefined) {
+      kept.set(key, result.length);
+      result.push(model);
+      continue;
+    }
+
+    if (canonicalRank(model) < canonicalRank(result[existingIndex])) {
+      result[existingIndex] = model;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 0 = `provider/model` (canonical), 1 = other qualified id such as
+ * `auto/<name>` or `upstream/model`, 2 = bare alias.
+ */
+function canonicalRank(model: ModelEntry): number {
+  if (model.id.startsWith(`${model.provider}/`)) {
+    return 0;
+  }
+
+  return model.id.includes('/') ? 1 : 2;
 }
 
 export async function fetchCodexCatalog(gatewayUrl: string): Promise<string> {

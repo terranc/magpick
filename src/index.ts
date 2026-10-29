@@ -27,7 +27,6 @@ const pkg = JSON.parse(
 interface CliOptions {
   clear?: boolean;
   gateway?: string;
-  native?: boolean;
   json?: boolean;
 }
 
@@ -39,7 +38,6 @@ program
   .version(pkg.version)
   .option('--clear', 'Remove magpick-generated Claude and Codex configs')
   .option('--gateway <url>', 'Magpie gateway URL (default: http://127.0.0.1:3425)')
-  .option('--native', 'Only show models that natively speak the target API')
   .option('--json', 'Print the model list as JSON without launching')
   .enablePositionalOptions();
 
@@ -95,13 +93,17 @@ async function runWithType(agent: AgentType, args: string[]): Promise<void> {
       );
     }
 
-    const candidates = options.native
-      ? models.filter((model) => isNativeFor(agent, model))
-      : models;
+    // The agent is already known, so only surface models that can serve its
+    // protocol. Routing groups carry no protocol of their own (Magpie picks the
+    // member per request), so they always stay.
+    const candidates = models.filter(
+      (model) => model.isGroup || isNativeFor(agent, model)
+    );
 
     if (candidates.length === 0) {
       throw new Error(
-        `No ${agentLabel(agent)}-native models found. Remove --native to include models translated by Magpie.`
+        `No models natively serve the ${agentLabel(agent)} API. ` +
+          'Enable one in Magpie, or check that its /v1/models reports native_endpoints.'
       );
     }
 
@@ -233,7 +235,6 @@ function readOptions(): CliOptions {
 
   return {
     clear: Boolean(parsed.clear || own.includes('--clear')),
-    native: Boolean(parsed.native || own.includes('--native')),
     json: Boolean(parsed.json || own.includes('--json')),
     gateway:
       parsed.gateway ||
@@ -260,7 +261,10 @@ function stripOwnFlags(args: string[]): string[] {
       continue;
     }
 
-    if (arg === '--clear' || arg === '--native' || arg === '--json') {
+    // --native is a no-op kept for compatibility: filtering by the agent's
+    // protocol is now the default, so the flag is swallowed instead of being
+    // forwarded to the target CLI.
+    if (arg === '--clear' || arg === '--json' || arg === '--native') {
       continue;
     }
 

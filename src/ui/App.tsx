@@ -94,20 +94,20 @@ export function App({ agent, gatewayUrl, models, onSelect }: AppProps) {
 
   return (
     <Box flexDirection="column" padding={1}>
-      <SearchHeader query={query} onChange={setQuery} />
-
       <Box marginBottom={1}>
         <Text dimColor>
           {agentLabel(agent)} · {gatewayUrl}
         </Text>
       </Box>
 
+      <SearchHeader query={query} onChange={setQuery} />
+
       <Box flexDirection="row">
         <Box flexDirection="column" width="52%">
           {visibleModels.map((model, index) => {
             const globalIndex = startIndex + index;
             const isSelected = globalIndex === safeIndex;
-            const badges = protocolBadges(model);
+            const suffix = modelRowSuffix(model);
 
             return (
               <Box key={model.id}>
@@ -118,13 +118,8 @@ export function App({ agent, gatewayUrl, models, onSelect }: AppProps) {
                   wrap="truncate"
                 >
                   {isSelected ? '❯ ' : '  '}
-                  {model.isGroup ? '◆ ' : ''}
-                  {model.isGroup
-                    ? model.displayName
-                    : `${model.provider} · ${model.displayName}`}
-                  {badges.length > 0 && (
-                    <Text color="cyan"> [{badges.join('')}]</Text>
-                  )}
+                  {model.displayName}
+                  {suffix && <Text dimColor>{` · ${suffix}`}</Text>}
                 </Text>
               </Box>
             );
@@ -140,7 +135,6 @@ export function App({ agent, gatewayUrl, models, onSelect }: AppProps) {
         <Text dimColor>
           ↑↓ Navigate │ PgUp/PgDn Page │ Enter Select │ Esc Cancel
         </Text>
-        <Text dimColor>M messages · R responses · C chat · G gemini</Text>
         {totalPages > 1 && (
           <Text dimColor>
             Page {currentPage}/{totalPages} ({filteredModels.length} models)
@@ -187,7 +181,6 @@ function ModelPreview({ model, gatewayUrl }: ModelPreviewProps) {
   }
 
   const native = nativeEndpointNames(model);
-  const price = formatPrice(model.pricing);
 
   return (
     <Box flexDirection="column" paddingX={1} borderStyle="single" borderColor="gray">
@@ -205,7 +198,7 @@ function ModelPreview({ model, gatewayUrl }: ModelPreviewProps) {
 
       <Text>
         <Text color="yellow">Native: </Text>
-        {native.length > 0 ? native.join(', ') : 'translated by magpie'}
+        {native.length > 0 ? `[${native.join(', ')}]` : 'translated by magpie'}
       </Text>
 
       {model.contextWindow !== undefined && (
@@ -218,20 +211,6 @@ function ModelPreview({ model, gatewayUrl }: ModelPreviewProps) {
         </Text>
       )}
 
-      {model.reasoningLevels.length > 0 && (
-        <Text>
-          <Text color="yellow">Reasoning: </Text>
-          {model.reasoningLevels.join(' / ')}
-        </Text>
-      )}
-
-      {price && (
-        <Text>
-          <Text color="yellow">Price: </Text>
-          {price}
-        </Text>
-      )}
-
       <Box marginTop={1}>
         <Text dimColor>Gateway: {gatewayUrl}</Text>
       </Box>
@@ -239,47 +218,33 @@ function ModelPreview({ model, gatewayUrl }: ModelPreviewProps) {
   );
 }
 
+function modelRowSuffix(model: ModelEntry): string {
+  if (!model.isGroup) {
+    return model.provider;
+  }
+
+  // Group names sometimes read "… · routing group" already; skip the duplicate.
+  return /routing/i.test(model.displayName) ? '' : 'routing group';
+}
+
 function nativeEndpointNames(model: ModelEntry): string[] {
   const names: string[] = [];
 
   for (const endpoint of model.nativeEndpoints) {
     if (endpoint === '/v1/messages') {
-      names.push('messages');
+      names.push('Anthropic Messages');
     } else if (endpoint === '/v1/responses') {
-      names.push('responses');
+      names.push('OpenAI Responses');
     } else if (endpoint === '/v1/chat/completions') {
-      names.push('chat');
+      names.push('Chat Completions');
     } else if (endpoint.includes('gemini') || endpoint.includes('/v1beta')) {
-      names.push('gemini');
+      names.push('Gemini');
     } else {
       names.push(endpoint);
     }
   }
 
   return names;
-}
-
-function protocolBadges(model: ModelEntry): string[] {
-  const badges: string[] = [];
-
-  if (model.nativeEndpoints.includes('/v1/messages')) {
-    badges.push('M');
-  }
-  if (model.nativeEndpoints.includes('/v1/responses')) {
-    badges.push('R');
-  }
-  if (model.nativeEndpoints.includes('/v1/chat/completions')) {
-    badges.push('C');
-  }
-  if (
-    model.nativeEndpoints.some(
-      (endpoint) => endpoint.includes('gemini') || endpoint.includes('/v1beta')
-    )
-  ) {
-    badges.push('G');
-  }
-
-  return badges;
 }
 
 function formatTokens(value: number): string {
@@ -293,25 +258,6 @@ function formatTokens(value: number): string {
   }
 
   return String(value);
-}
-
-function formatPrice(pricing: Record<string, string> | undefined): string | undefined {
-  if (!pricing) {
-    return undefined;
-  }
-
-  const input = Number(pricing.prompt);
-  const output = Number(pricing.completion);
-
-  if (!Number.isFinite(input) || !Number.isFinite(output)) {
-    return undefined;
-  }
-
-  return `${formatUsd(input * 1_000_000)}/M in · ${formatUsd(output * 1_000_000)}/M out`;
-}
-
-function formatUsd(value: number): string {
-  return `$${trimZero(value.toFixed(2))}`;
 }
 
 function trimZero(value: string): string {
