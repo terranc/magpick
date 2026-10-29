@@ -21,6 +21,8 @@ magpick keeps the interaction of [ccsc](https://github.com/terranc/ccsc) - searc
 - **Protocol awareness** - Only lists models that can natively serve the selected agent's API.
 - **Quick switching** - Fast interactive selection without opening a GUI.
 
+![magpick model picker](assets/screenshot.jpg)
+
 Use cases:
 
 - Working on multiple projects that need different models (cheap/fast vs. deep reasoning).
@@ -65,11 +67,21 @@ npm run build
 npm link
 ```
 
+`npm link` writes into your global npm prefix; if that directory is not writable, use `npm install -g .` from the repository instead.
+
 Or run it without linking:
 
 ```bash
 node dist/index.js
 ```
+
+### Verify the setup
+
+```bash
+magpick --json | head -20
+```
+
+A `models` array means the gateway is reachable and at least one model is enabled. An error, or an empty list, means Magpie is not running, has no provider enabled, or the gateway address is wrong.
 
 ## Usage
 
@@ -104,13 +116,16 @@ All arguments after the subcommand are passed directly to the target CLI:
 # Claude Code
 magpick --continue
 magpick --print "Explain this repository"
-magpick --model claude-sonnet-4-20250514
 
 # Codex CLI
-magpick codex -- --full-auto
+magpick codex --full-auto
 ```
 
-magpick's own flags (`--gateway`, `--json`, `--clear`) are stripped before forwarding. Put `--` before anything that could be mistaken for a magpick flag and must reach the CLI.
+magpick's own flags (`--gateway`, `--json`, `--clear`) are stripped before forwarding. When the target CLI needs an argument with the same name, put `--` in front of it: everything after `--` is forwarded untouched, and the `--` itself is not passed on.
+
+```bash
+magpick codex -- --json     # --json reaches Codex, not magpick
+```
 
 ### Inspect the model catalog
 
@@ -134,12 +149,16 @@ magpick --gateway=http://192.168.1.10:3425
 magpick --clear
 ```
 
+Removes `~/.claude/magpick-*.settings.json` and `~/.magpick/codex/*`. Global Claude/Codex configs, Magpie configs and `~/.magpick-history` are kept.
+
 ### Help
 
 ```bash
 magpick --help
-magpick codex --help
+magpick codex --help     # magpick's help for the codex subcommand
 ```
+
+For the target CLI's own help, call it directly: `claude --help` / `codex --help`.
 
 ## How it works
 
@@ -166,9 +185,23 @@ magpick creates `~/.magpick/codex/<slug>-<hash>/` containing:
 
 Then magpick launches `codex` with `CODEX_HOME` pointing at that directory.
 
-### Model list
+### Preview panel
 
-The preview panel lists the protocols a model serves natively, read from `native_endpoints` in `/v1/models`:
+The preview panel describes the highlighted model:
+
+```text
+┌────────────────────────────────────────┐
+│ DeepSeek V4.1 Flash                    │
+│ auto/deepseek-v4.1-flash               │
+│ ────────────────────────────────────── │
+│ Provider: cpi · routing group          │
+│ Native: translated by magpie           │
+│ Context: 1M · output 384K              │
+│ Gateway: http://127.0.0.1:3425         │
+└────────────────────────────────────────┘
+```
+
+`Native` lists the protocols the model serves natively, read from `native_endpoints` in `/v1/models`:
 
 - `Anthropic Messages` - `/v1/messages`
 - `OpenAI Responses` - `/v1/responses`
@@ -176,6 +209,15 @@ The preview panel lists the protocols a model serves natively, read from `native
 - `Gemini` - Gemini API (`/v1beta`)
 
 They are shown in brackets, e.g. `Native: [Anthropic Messages, Chat Completions]`. When a model has no native endpoint the panel says `translated by magpie`, meaning the gateway converts the request.
+
+### Model list
+
+Each row reads `model name · provider`, with the provider or `routing group` suffix dimmed:
+
+```text
+ DeepSeek V4.1 Flash · routing group
+ GPT-6 Astra · agentrouter
+```
 
 Because the agent is already known, the picker only lists models that serve that agent's protocol natively - `/v1/messages` for Claude Code, `/v1/responses` for Codex. Routing groups (`auto/...`) have no protocol of their own since Magpie picks a member per request, so they are always listed.
 
@@ -212,6 +254,18 @@ $env:MAGPIE_GATEWAY_KEY = "your-gateway-key"
 
 Create the key in Magpie. Loopback requests use the local `magpie` token and need no configuration.
 
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Cannot reach Magpie gateway at <url>` | Gateway not running, or wrong address | Start Magpie (menu bar app, `magpie serve`, `magpie daemon`), or pass `--gateway <url>` |
+| `Magpie returned HTTP 401` | Remote gateway without a key | `export MAGPIE_GATEWAY_KEY=<key>` |
+| `Magpie returned no models` | No provider or model enabled in Magpie | Add a provider and enable at least one model |
+| `No models natively serve the ... API` | Nothing enabled exposes that protocol | Enable a model whose `native_endpoints` include `/v1/messages` (Claude Code) or `/v1/responses` (Codex) |
+| `Magpie returned an invalid Codex catalog` | Magpie too old, or `/v1/codex/models` missing | Update Magpie |
+| A model is missing from the list | Filtered out by protocol, or merged into a duplicate row | Check `magpick --json`; groups are always listed, same-provider duplicates collapse into one row |
+| Nothing matches while typing | Search is too narrow | Clear the search box |
+
 ## History
 
 Model usage history is stored in `~/.magpick-history` as `timestamp<TAB>agent<TAB>modelId`. Recently used models are displayed at the top of the list for the matching agent; untouched entries are ordered with routing groups first, then by provider and name.
@@ -233,6 +287,8 @@ node dist/index.js
 # Type check
 npm run typecheck
 ```
+
+`README.md` and `README.zh-CN.md` are kept in sync - when you change one, change the other.
 
 ## Tech stack
 

@@ -21,6 +21,8 @@ magpick 延续了 [ccsc](https://github.com/terranc/ccsc) 的交互方式 - 搜�
 - **协议感知** - 只列出能为所选 agent 的 API 提供原生服务的模型。
 - **快速切换** - 无需打开 GUI，在终端里交互式选择。
 
+![magpick 模型选择器](assets/screenshot.jpg)
+
 适用场景：
 
 - 多个项目需要不同模型（便宜/快速 vs. 深度推理）。
@@ -65,11 +67,21 @@ npm run build
 npm link
 ```
 
+`npm link` 会写入全局 npm 前缀目录；如果该目录不可写，改用仓库内的 `npm install -g .`。
+
 不 link 也可以直接运行：
 
 ```bash
 node dist/index.js
 ```
+
+### 验证安装
+
+```bash
+magpick --json | head -20
+```
+
+能打印出 `models` 数组，说明网关可达且至少启用了一个模型。报错或列表为空，说明 Magpie 没在运行、没有启用服务商，或者网关地址不对。
 
 ## 使用
 
@@ -104,13 +116,16 @@ magpick codex        # 交互选择模型 → 启动 Codex
 # Claude Code
 magpick --continue
 magpick --print "解释一下这个仓库"
-magpick --model claude-sonnet-4-20250514
 
 # Codex CLI
-magpick codex -- --full-auto
+magpick codex --full-auto
 ```
 
-magpick 自己的参数（`--gateway`、`--json`、`--clear`）会在转发前被移除。如果某个参数看起来像 magpick 的参数但必须传给 CLI，请在它前面加 `--`。
+magpick 自己的参数（`--gateway`、`--json`、`--clear`）会在转发前被移除。当目标 CLI 需要使用同名参数时，在它前面加 `--`：`--` 之后的内容原样转发，`--` 本身不会被传下去。
+
+```bash
+magpick codex -- --json     # --json 传给 Codex，不是 magpick
+```
 
 ### 查看模型目录
 
@@ -134,12 +149,16 @@ magpick --gateway=http://192.168.1.10:3425
 magpick --clear
 ```
 
+删除 `~/.claude/magpick-*.settings.json` 和 `~/.magpick/codex/*`。全局 Claude/Codex 配置、Magpie 配置和 `~/.magpick-history` 都会保留。
+
 ### 帮助
 
 ```bash
 magpick --help
-magpick codex --help
+magpick codex --help     # magpick 的 codex 子命令帮助
 ```
+
+想查看目标 CLI 自己的帮助，直接运行 `claude --help` / `codex --help`。
 
 ## 工作原理
 
@@ -166,9 +185,23 @@ magpick 创建 `~/.magpick/codex/<slug>-<hash>/`，其中包含：
 
 随后 magpick 以 `CODEX_HOME` 指向该目录的方式启动 `codex`。
 
-### 模型列表
+### 预览面板
 
-预览面板会列出模型原生支持的协议，数据来自 `/v1/models` 的 `native_endpoints`：
+预览面板展示当前高亮模型的详情：
+
+```text
+┌────────────────────────────────────────┐
+│ DeepSeek V4.1 Flash                    │
+│ auto/deepseek-v4.1-flash               │
+│ ────────────────────────────────────── │
+│ Provider: cpi · routing group          │
+│ Native: translated by magpie           │
+│ Context: 1M · output 384K              │
+│ Gateway: http://127.0.0.1:3425         │
+└────────────────────────────────────────┘
+```
+
+`Native` 行列出模型原生支持的协议，数据来自 `/v1/models` 的 `native_endpoints`：
 
 - `Anthropic Messages` - `/v1/messages`
 - `OpenAI Responses` - `/v1/responses`
@@ -176,6 +209,15 @@ magpick 创建 `~/.magpick/codex/<slug>-<hash>/`，其中包含：
 - `Gemini` - Gemini API（`/v1beta`）
 
 它们以方括号形式显示，例如 `Native: [Anthropic Messages, Chat Completions]`。模型没有原生端点时，面板显示 `translated by magpie`，表示请求由网关转换。
+
+### 模型列表
+
+每行格式为 `模型名 · 服务商`，服务商或 `routing group` 后缀为灰色：
+
+```text
+ DeepSeek V4.1 Flash · routing group
+ GPT-6 Astra · agentrouter
+```
 
 由于 agent 在启动前已经确定，选择器只列出能为该 agent 的协议提供原生服务的模型 - Claude Code 对应 `/v1/messages`，Codex 对应 `/v1/responses`。路由组（`auto/...`）本身没有协议，由 Magpie 在每次请求时选择成员，因此始终显示。
 
@@ -212,6 +254,18 @@ $env:MAGPIE_GATEWAY_KEY = "your-gateway-key"
 
 在 Magpie 中创建 key。loopback 请求使用本地 `magpie` token，无需配置。
 
+## 故障排查
+
+| 现象 | 原因 | 处理 |
+|------|------|------|
+| `Cannot reach Magpie gateway at <url>` | 网关没运行，或地址不对 | 启动 Magpie（菜单栏应用、`magpie serve`、`magpie daemon`），或指定 `--gateway <url>` |
+| `Magpie returned HTTP 401` | 远程网关缺少 key | `export MAGPIE_GATEWAY_KEY=<key>` |
+| `Magpie returned no models` | Magpie 里没有启用的服务商或模型 | 添加服务商并启用至少一个模型 |
+| `No models natively serve the ... API` | 没有启用支持该协议的模型 | 启用 `native_endpoints` 含 `/v1/messages`（Claude Code）或 `/v1/responses`（Codex）的模型 |
+| `Magpie returned an invalid Codex catalog` | Magpie 版本过旧，或缺少 `/v1/codex/models` | 升级 Magpie |
+| 某个模型不在列表里 | 被协议过滤掉，或与重复条目合并了 | 用 `magpick --json` 核对；路由组始终显示，同服务商重复项只保留一行 |
+| 输入后没有任何匹配 | 搜索词太窄 | 清空搜索框 |
+
 ## 历史记录
 
 模型使用历史保存在 `~/.magpick-history`，格式为 `timestamp<TAB>agent<TAB>modelId`。最近使用过的模型会排到对应 agent 列表的最前面；未使用过的条目按路由组优先、然后服务商和名称排序。
@@ -233,6 +287,8 @@ node dist/index.js
 # 类型检查
 npm run typecheck
 ```
+
+`README.md` 与 `README.zh-CN.md` 需要保持同步 - 改了一个就要改另一个。
 
 ## 技术栈
 
