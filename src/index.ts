@@ -255,9 +255,10 @@ function stripOwnFlags(args: string[]): string[] {
       continue;
     }
 
+    // `--` only separates magpick's flags from the target CLI's; it is not
+    // forwarded, otherwise the CLI sees an extra end-of-options marker.
     if (arg === '--') {
       passthrough = true;
-      result.push(arg);
       continue;
     }
 
