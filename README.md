@@ -12,7 +12,7 @@ If you use [Magpie](https://github.com/yetone/magpie) to manage providers and mo
 2. **One model at a time** - All sessions share the same configuration, so comparing two models in parallel means manual edits and restarts.
 3. **A provider is not a model** - Magpie providers are not split into "Claude" and "Codex" buckets. A provider exposes protocol endpoints (`anthropic`, `chat`, `responses`, `gemini`), and the gateway translates between them, so the thing you actually pick is a model.
 
-magpick keeps the interaction of [ccsc](https://github.com/terranc/ccsc) - search, arrow keys, preview panel, history - and adds:
+magpick is an interactive terminal picker - search, arrow keys, a preview panel and history - plus:
 
 - **Environment isolation** - Only affects processes launched by magpick, not global settings or other running instances.
 - **No config pollution** - Never modifies `~/.claude/settings.json` or `~/.codex/config.toml`.
@@ -308,7 +308,7 @@ npm run typecheck
 ## Links
 
 - [Magpie](https://github.com/yetone/magpie)
-- [ccsc](https://github.com/terranc/ccsc) - the CC Switch CLI tool whose UX magpick follows
+- [ccsc](https://github.com/terranc/ccsc) - sibling project: the same picker for CC Switch providers
 - [Linux Do](https://linux.do/)
 
 ## License

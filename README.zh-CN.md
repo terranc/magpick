@@ -12,7 +12,7 @@
 2. **同一时间只能用一个模型** - 所有会话共享同一份配置，想并行对比两个模型就得手动改配置、重启。
 3. **服务商不等于模型** - Magpie 的服务商并不按 “Claude” 和 “Codex” 分类；一个服务商暴露的是协议端点（`anthropic`、`chat`、`responses`、`gemini`），网关负责在协议之间转换。所以你真正要选的是模型。
 
-magpick 延续了 [ccsc](https://github.com/terranc/ccsc) 的交互方式 - 搜索、方向键、预览面板、历史记录 - 并额外提供：
+magpick 是一个交互式终端选择器：搜索、方向键、预览面板、历史记录，另外还提供：
 
 - **环境隔离** - 只影响 magpick 启动的进程，不改变全局设置，也不影响其他正在运行的实例。
 - **不污染配置** - 从不修改 `~/.claude/settings.json` 或 `~/.codex/config.toml`。
@@ -308,7 +308,7 @@ npm run typecheck
 ## 链接
 
 - [Magpie](https://github.com/yetone/magpie)
-- [ccsc](https://github.com/terranc/ccsc) - magpick 沿用其交互体验的 CC Switch CLI 工具
+- [ccsc](https://github.com/terranc/ccsc) - 兄弟项目：面向 CC Switch 服务商的同款选择器
 - [Linux Do](https://linux.do/)
 
 ## 许可证
