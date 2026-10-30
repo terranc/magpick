@@ -9,6 +9,7 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude');
 const BASE_SETTINGS = path.join(CLAUDE_DIR, 'settings.json');
 const SETTINGS_PREFIX = 'magpick-';
 const SETTINGS_PATTERN = /^magpick-.*\.settings\.json$/;
+const MAX_CONTEXT_TOKENS = 1_000_000;
 
 interface ClaudeSettings {
   env?: Record<string, string>;
@@ -42,10 +43,14 @@ export async function createClaudeSettings(
   // Clear a model id inherited from the shell; the top-level `model` wins.
   env.ANTHROPIC_MODEL = '';
 
-  // Claude Code assumes a 200K window unless told otherwise. Only lower it for
-  // smaller models; leave 200K+ models to Claude Code's own defaults.
-  if (model.contextWindow && model.contextWindow < 200_000) {
-    env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = String(model.contextWindow);
+  // Claude Code assumes a 200K window for model ids it does not recognize,
+  // which is every Magpie model. Tell it the real window so large-context
+  // models get their full capacity; cap at 1M, the largest window Claude Code
+  // supports without the 1M beta opt-in.
+  if (model.contextWindow) {
+    env.CLAUDE_CODE_MAX_CONTEXT_TOKENS = String(
+      Math.min(model.contextWindow, MAX_CONTEXT_TOKENS)
+    );
   }
 
   const settings: ClaudeSettings = {

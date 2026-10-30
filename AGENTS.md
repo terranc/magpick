@@ -19,3 +19,10 @@ If you're using Codex or another agent-capable tool, additional project-scoped h
 Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
 
 <!-- TRELLIS:END -->
+
+## Version Release Preference
+
+<!-- github-push-and-release: simple -->
+This project uses simple mode: CHANGELOG + version bump commit + push. No git tag or GitHub release; the CLI is distributed via npm.
+Auto-detected: Node.js
+

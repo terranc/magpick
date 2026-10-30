@@ -174,7 +174,7 @@ env.ANTHROPIC_DEFAULT_{HAIKU,SONNET,OPUS,FABLE}_MODEL
 env.ANTHROPIC_SMALL_FAST_MODEL
 ```
 
-继承来的 `env.ANTHROPIC_MODEL` 会被清空，让顶层的 `model` 生效。仅当模型上报的上下文窗口小于 200K 时才设置 `CLAUDE_CODE_MAX_CONTEXT_TOKENS`；更大的模型沿用 Claude Code 的默认值。随后 magpick 执行 `claude --settings=<file>` 启动。全局设置文件不会被修改。
+继承来的 `env.ANTHROPIC_MODEL` 会被清空，让顶层的 `model` 生效。`CLAUDE_CODE_MAX_CONTEXT_TOKENS` 按模型上报的上下文窗口设置，上限 1M，避免大窗口模型被 Claude Code 对未知模型 id 的 200K 默认值限制。随后 magpick 执行 `claude --settings=<file>` 启动。全局设置文件不会被修改。
 
 ### Codex
 

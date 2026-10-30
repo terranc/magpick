@@ -1,6 +1,6 @@
 {
   "name": "@terranc/magpick",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Session-scoped model picker for the Magpie gateway (Claude Code + Codex)",
   "type": "module",
   "bin": {

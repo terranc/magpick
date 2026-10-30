@@ -174,7 +174,7 @@ env.ANTHROPIC_DEFAULT_{HAIKU,SONNET,OPUS,FABLE}_MODEL
 env.ANTHROPIC_SMALL_FAST_MODEL
 ```
 
-Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is set only when the model reports a context window below 200K; larger models keep Claude Code's defaults. Then magpick launches `claude --settings=<file>`. The global settings file is never modified.
+Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is set from the context window the model reports, capped at 1M, so large-context models are not held to Claude Code's 200K default for unrecognized model ids. Then magpick launches `claude --settings=<file>`. The global settings file is never modified.
 
 ### Codex
 
