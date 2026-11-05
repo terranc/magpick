@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-11-06
+
+### Fixed
+
+- Provider parsing and model deduplication now cleanly separate same-named models across different providers (such as `antigravity/gemini-3.8-flash` vs `opencode-zen/gemini-3.8-flash`), preventing them from colliding and being dropped.
+- Universal routing group and provider identification across multi-tier gateway paths and upstream proxies without local file dependencies or hardcoded instance names.
+
 ## [0.1.1] - 2026-10-30
 
 ### Fixed

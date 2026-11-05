@@ -115,11 +115,22 @@ function dedupeModels(models: ModelEntry[]): ModelEntry[] {
   const result: ModelEntry[] = [];
 
   for (const model of models) {
-    const kind = model.isGroup ? 'group' : 'model';
-    const name = model.displayName.trim().toLowerCase() || model.id.toLowerCase();
-    const key = `${kind}\u0000${model.provider}\u0000${name}`;
-    const existingIndex = kept.get(key);
+    let key: string;
+    if (model.isGroup) {
+      // Routing groups are keyed by normalized group name so "auto/x" and "<gateway>/auto/x" deduplicate
+      const groupName = model.displayName
+        .trim()
+        .toLowerCase()
+        .replace(/·\s*routing group.*$/i, '')
+        .trim();
+      key = `group\u0000${groupName}`;
+    } else {
+      const prov = model.provider.trim().toLowerCase();
+      const name = model.displayName.trim().toLowerCase() || model.id.toLowerCase();
+      key = `model\u0000${prov}\u0000${name}`;
+    }
 
+    const existingIndex = kept.get(key);
     if (existingIndex === undefined) {
       kept.set(key, result.length);
       result.push(model);
@@ -135,11 +146,21 @@ function dedupeModels(models: ModelEntry[]): ModelEntry[] {
 }
 
 /**
- * 0 = `provider/model` (canonical), 1 = other qualified id such as
- * `auto/<name>` or `upstream/model`, 2 = bare alias.
+ * 0 = canonical `provider/model` or `auto/<name>`
+ * 1 = other qualified id such as `<gateway>/provider/model`
+ * 2 = bare alias
  */
 function canonicalRank(model: ModelEntry): number {
-  if (model.id.startsWith(`${model.provider}/`)) {
+  if (model.isGroup) {
+    if (model.id.startsWith('auto/') || model.id.startsWith('group/')) {
+      return 0;
+    }
+    return model.id.includes('/') ? 1 : 2;
+  }
+
+  const prov = model.provider.toLowerCase();
+  const idLower = model.id.toLowerCase();
+  if (idLower.startsWith(`${prov}/`)) {
     return 0;
   }
 
@@ -170,6 +191,47 @@ export async function fetchCodexCatalog(gatewayUrl: string): Promise<string> {
   return body;
 }
 
+function extractProvider(
+  id: string,
+  rawOwnedBy: unknown,
+  label: string,
+  isGroup: boolean
+): string {
+  if (isGroup) {
+    return 'routing group';
+  }
+
+  // 1. Magpie label format: "<displayName> · <providerName> [· <gatewayName>]"
+  if (label) {
+    const labelParts = label.split(' · ').map((s) => s.trim());
+    if (labelParts.length >= 2 && !/routing group/i.test(labelParts[1])) {
+      return labelParts[1];
+    }
+  }
+
+  // 2. ID path: "[<gateway>/]<provider>/<model>"
+  const parts = id.split('/');
+  const ownedBy = typeof rawOwnedBy === 'string' ? rawOwnedBy.trim() : '';
+
+  if (parts.length >= 3 && ownedBy && parts[0].toLowerCase() === ownedBy.toLowerCase()) {
+    return parts[1];
+  }
+
+  if (parts.length >= 2) {
+    return parts[0];
+  }
+
+  return ownedBy || id || 'unknown';
+}
+
+function isRoutingGroup(id: string, label: string, displayName: string): boolean {
+  return (
+    /(^|\/)(auto|group)\//i.test(id) ||
+    /routing group/i.test(label) ||
+    /routing group/i.test(displayName)
+  );
+}
+
 function parseModel(value: unknown): ModelEntry | undefined {
   if (!isRecord(value)) {
     return undefined;
@@ -181,9 +243,6 @@ function parseModel(value: unknown): ModelEntry | undefined {
   }
 
   const id = raw.id.trim();
-  const provider = typeof raw.owned_by === 'string' && raw.owned_by
-    ? raw.owned_by
-    : id.split('/')[0] || 'unknown';
   const displayName =
     typeof raw.display_name === 'string' && raw.display_name.trim()
       ? raw.display_name.trim()
@@ -192,6 +251,9 @@ function parseModel(value: unknown): ModelEntry | undefined {
     typeof raw.magpie_label === 'string' && raw.magpie_label.trim()
       ? raw.magpie_label.trim()
       : displayName;
+
+  const isGroup = isRoutingGroup(id, label, displayName);
+  const provider = extractProvider(id, raw.owned_by, label, isGroup);
   const nativeEndpoints = toStringArray(raw.native_endpoints);
   const reasoningLevels = toStringArray(raw.reasoning_levels).length > 0
     ? toStringArray(raw.reasoning_levels)
@@ -202,7 +264,7 @@ function parseModel(value: unknown): ModelEntry | undefined {
     displayName,
     provider,
     label,
-    isGroup: /routing group/i.test(label) || id.startsWith('auto/'),
+    isGroup,
     nativeEndpoints,
     contextWindow: toNumber(raw.context_window) ?? toNumber(raw.context_length),
     maxOutputTokens: toNumber(raw.max_output_tokens),
