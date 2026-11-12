@@ -178,12 +178,9 @@ Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `C
 
 ### Codex
 
-magpick creates `~/.magpick/codex/<slug>-<hash>/` containing:
+magpick writes `~/.magpick/codex/<slug>-<hash>/magpie-models.json` - the catalog fetched from `GET /v1/codex/models` - then launches `codex` with per-process `-c` overrides for `model_provider`, `model`, `model_catalog_json` and a `[model_providers.magpick]` provider pointing at the gateway.
 
-- `config.toml` - `model_provider = "magpie"`, the selected `model`, `model_catalog_json`, a `[model_providers.magpie]` block pointing at the gateway, and your other Codex settings (conflicting top-level keys and any previous `[model_providers.magpie]` section are removed).
-- `magpie-models.json` - the catalog fetched from `GET /v1/codex/models`.
-
-Then magpick launches `codex` with `CODEX_HOME` pointing at that directory.
+`CODEX_HOME` is left alone, so magpick uses the same Codex home as a direct `codex` invocation: plugins (including plugin-provided MCP servers such as `context-mode`), MCP servers, skills, hooks, `AGENTS.md` and session history are all shared. Only the model selection differs. Inherited `CODEX_HOME` values pointing inside `~/.magpick/codex` are ignored so sessions launched by older magpick versions do not leak their isolated home.
 
 ### Preview panel
 

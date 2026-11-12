@@ -178,12 +178,9 @@ env.ANTHROPIC_SMALL_FAST_MODEL
 
 ### Codex
 
-magpick 创建 `~/.magpick/codex/<slug>-<hash>/`，其中包含：
+magpick 写入 `~/.magpick/codex/<slug>-<hash>/magpie-models.json`（从 `GET /v1/codex/models` 获取的模型目录），随后通过进程级 `-c` 覆盖 `model_provider`、`model`、`model_catalog_json`，并注入指向网关的 `[model_providers.magpick]`。
 
-- `config.toml` - `model_provider = "magpie"`、所选 `model`、`model_catalog_json`、指向网关的 `[model_providers.magpie]` 配置块，以及你原有的其他 Codex 设置（冲突的顶层键和旧的 `[model_providers.magpie]` 段会被移除）。
-- `magpie-models.json` - 从 `GET /v1/codex/models` 获取的模型目录。
-
-随后 magpick 以 `CODEX_HOME` 指向该目录的方式启动 `codex`。
+`CODEX_HOME` 保持不变，因此 magpick 与直接运行 `codex` 使用同一个 Codex home：插件（包括 `context-mode` 这类由插件提供的 MCP）、MCP server、skills、hooks、`AGENTS.md` 和会话历史全部共享，只有模型选择不同。继承自旧版 magpick、指向 `~/.magpick/codex` 内部的 `CODEX_HOME` 会被忽略，避免旧会话把隔离目录继续传下去。
 
 ### 预览面板
 

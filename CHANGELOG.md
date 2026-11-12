@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-11-13
+
+### Fixed
+
+- Codex launches now keep the user's real `CODEX_HOME` and override only the model/provider through `-c`, so plugins, plugin-provided MCP servers (such as `context-mode`), skills, hooks, `AGENTS.md` and session history match a direct `codex` invocation.
+
 ## [0.1.2] - 2026-11-06
 
 ### Fixed

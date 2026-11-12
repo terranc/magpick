@@ -16,7 +16,13 @@ import {
 } from './gateway.js';
 import { loadHistory, saveToHistory, sortByHistory } from './history.js';
 import { clearClaudeSettings, createClaudeSettings } from './claude-settings.js';
-import { clearCodexConfigs, createCodexConfig } from './codex-settings.js';
+import {
+  CODEX_GATEWAY_KEY_ENV,
+  buildCodexOverrides,
+  clearCodexConfigs,
+  createCodexCatalog,
+  resolveCodexHomeOverride,
+} from './codex-settings.js';
 import type { AgentType, ModelEntry } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -193,11 +199,15 @@ async function launchCodex(
   gatewayUrl: string,
   args: string[]
 ): Promise<void> {
-  const codexHome = await createCodexConfig(model, gatewayUrl, getGatewayKey());
+  const catalogPath = await createCodexCatalog(model, gatewayUrl);
+  const overrides = buildCodexOverrides(model, gatewayUrl, catalogPath);
 
   console.log(`🚀 Starting Codex with model: ${model.id}`);
 
-  await spawnCli('codex', args, { CODEX_HOME: codexHome });
+  await spawnCli('codex', [...overrides, ...args], {
+    CODEX_HOME: resolveCodexHomeOverride(process.env.CODEX_HOME),
+    [CODEX_GATEWAY_KEY_ENV]: getGatewayKey(),
+  });
 }
 
 async function clearGenerated(): Promise<void> {
@@ -294,7 +304,7 @@ function agentLabel(agent: AgentType): string {
 async function spawnCli(
   bin: string,
   args: string[],
-  envVars: Record<string, string>
+  envVars: Record<string, string | undefined>
 ): Promise<import('child_process').ChildProcess> {
   const userShell = process.env.SHELL;
 
@@ -314,7 +324,12 @@ async function spawnCli(
     }
   }
 
-  const spawnEnv = { ...process.env, ...envVars };
+  const spawnEnv: NodeJS.ProcessEnv = { ...process.env, ...envVars };
+  for (const [key, value] of Object.entries(envVars)) {
+    if (value === undefined) {
+      delete spawnEnv[key];
+    }
+  }
 
   const child = userShell
     ? spawn(
