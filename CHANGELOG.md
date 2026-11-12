@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-11-13
+
+### Fixed
+
+- Routing-group deduplication now prefers gateway-qualified ids such as `<gateway>/auto/<name>` and `<gateway>/group/<name>`, avoiding short ids like `auto/free` that the gateway rejects as ambiguous.
+- Pi model configuration now always lists `text` as an input modality and keeps only `text` and `image` values.
+
+### Changed
+
+- Both READMEs document the updated deduplication order for models and routing groups.
+
 ## [0.2.0] - 2026-11-13
 
 ### Added
