@@ -5,6 +5,28 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-11-13
+
+### Added
+
+- Pi, Kimi Code, OpenCode and ZCode support, each with protocol-aware model filtering and session-scoped launch configuration.
+- `magpick kimi-code` as an alias for `magpick kimi`.
+- Pi configuration isolation through a mirrored `PI_CODING_AGENT_DIR` and generated `models.json`.
+- Kimi Code model selection through `KIMI_MODEL_*` environment variables without writing files.
+- OpenCode configuration through `OPENCODE_CONFIG_CONTENT` using the v2 provider schema.
+- ZCode configuration through an isolated `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`.
+
+### Changed
+
+- Agent metadata, protocol resolution and launch preparation now use a shared agent registry.
+- Protocol priority is Chat Completions, Responses, then Messages; routing groups use each agent's default protocol.
+- `magpick --clear` also removes `~/.magpick/pi` and `~/.magpick/zcode`.
+- Help text, package metadata and both READMEs now cover all supported agents.
+
+### Fixed
+
+- History validation recognizes every supported agent while continuing to ignore unknown entries.
+
 ## [0.1.3] - 2026-11-13
 
 ### Fixed
