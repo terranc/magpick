@@ -1,7 +1,7 @@
 {
   "name": "@terranc/magpick",
   "version": "0.1.3",
-  "description": "Session-scoped model picker for the Magpie gateway (Claude Code + Codex)",
+  "description": "Session-scoped model picker for the Magpie gateway (Claude Code, Codex, Pi, Kimi Code, OpenCode, ZCode)",
   "type": "module",
   "bin": {
     "magpick": "dist/index.js"
@@ -23,6 +23,12 @@
     "claude",
     "claude-code",
     "codex",
+    "pi",
+    "kimi",
+    "kimi-code",
+    "opencode",
+    "zcode",
+    "coding-agent",
     "gateway",
     "model",
     "provider",

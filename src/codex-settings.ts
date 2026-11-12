@@ -1,9 +1,9 @@
 import { chmod, mkdir, readdir, rm, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { createHash } from 'crypto';
 import path from 'path';
 import os from 'os';
 import { fetchCodexCatalog } from './gateway.js';
+import { modelSlug } from './model-slug.js';
 import type { ModelEntry } from './types.js';
 
 const CODEX_BASE = path.join(os.homedir(), '.magpick', 'codex');
@@ -94,14 +94,4 @@ export function buildCodexOverrides(
 
 function tomlString(value: string): string {
   return JSON.stringify(value);
-}
-
-function modelSlug(modelId: string): string {
-  const readable = modelId
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64);
-  const hash = createHash('sha1').update(modelId).digest('hex').slice(0, 8);
-  return `${readable || 'model'}-${hash}`;
 }

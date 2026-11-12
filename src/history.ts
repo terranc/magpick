@@ -2,6 +2,7 @@ import { appendFile, readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
 import os from 'os';
+import { isAgentType } from './agents/registry.js';
 import type { AgentType, HistoryEntry, ModelEntry } from './types.js';
 
 const HISTORY_FILE = path.join(os.homedir(), '.magpick-history');
@@ -28,7 +29,7 @@ export async function loadHistory(): Promise<HistoryEntry[]> {
       const agent = parts[1];
       const modelId = parts[2];
 
-      if (!Number.isFinite(timestamp) || (agent !== 'claude' && agent !== 'codex')) {
+      if (!Number.isFinite(timestamp) || !isAgentType(agent)) {
         return [];
       }
 

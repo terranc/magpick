@@ -2,7 +2,7 @@
 
 [中文](README.zh-CN.md)
 
-A convenient model picker for Claude Code and Codex CLI, backed by [Magpie](https://github.com/yetone/magpie). Choose a model (`provider/model`) or a routing group from your gateway, then launch the target CLI with an isolated, session-only configuration.
+A convenient model picker for Claude Code, Codex CLI, Pi, Kimi Code, OpenCode and ZCode, backed by [Magpie](https://github.com/yetone/magpie). Choose a model (`provider/model`) or a routing group from your gateway, then launch the target CLI with an isolated, session-only configuration.
 
 ## Why this project?
 
@@ -17,7 +17,7 @@ magpick is an interactive terminal picker - search, arrow keys, a preview panel 
 - **Environment isolation** - Only affects processes launched by magpick, not global settings or other running instances.
 - **No config pollution** - Never modifies `~/.claude/settings.json` or `~/.codex/config.toml`.
 - **Session-level model selection** - Each terminal session can use a different model.
-- **Multi-CLI support** - Works with both Claude Code and Codex CLI.
+- **Multi-CLI support** - Works with Claude Code, Codex CLI, Pi, Kimi Code, OpenCode and ZCode.
 - **Protocol awareness** - Only lists models that can natively serve the selected agent's API.
 - **Quick switching** - Fast interactive selection without opening a GUI.
 
@@ -27,7 +27,7 @@ Use cases:
 
 - Working on multiple projects that need different models (cheap/fast vs. deep reasoning).
 - Testing the same codebase against different models in parallel.
-- Using one Magpie gateway for both Claude Code and Codex CLI.
+- Using one Magpie gateway for every coding agent on your machine.
 
 ## Features
 
@@ -38,8 +38,8 @@ Use cases:
 - 📜 **History** - Recently used models appear at the top, tracked separately per agent
 - ⌨️ **Keyboard navigation** - Full keyboard support including Page Up/Down
 - 🔄 **Passthrough arguments** - All arguments are passed directly to the target CLI
-- 🤖 **Multi-CLI** - Supports both Claude Code and Codex CLI
-- 🧭 **Protocol-aware list** - Claude Code sees Anthropic Messages models, Codex sees Responses models, routing groups are always listed
+- 🤖 **Multi-CLI** - Supports Claude Code, Codex CLI, Pi, Kimi Code, OpenCode and ZCode
+- 🧭 **Protocol-aware list** - Each agent sees only the protocols it can natively serve; routing groups are always listed
 - 🧹 **Clean teardown** - `--clear` removes every generated config
 - 🧪 **Scriptable** - `--json` prints the model catalog without launching
 
@@ -47,7 +47,13 @@ Use cases:
 
 - Node.js >= 18.0.0
 - [Magpie](https://github.com/yetone/magpie) installed and its gateway running (menu bar app, `magpie serve`, or `magpie daemon`)
-- [Claude CLI](https://claude.ai/code) and/or [Codex CLI](https://github.com/openai/codex) installed
+- At least one supported CLI installed:
+  - [Claude Code](https://claude.ai/code)
+  - [Codex CLI](https://github.com/openai/codex)
+  - Pi (`pi`) - verified with 1.5.2
+  - [Kimi Code](https://moonshotai.github.io/kimi-code/) - the new `kimi` CLI (`~/.kimi-code`), verified with 2.2.0; the legacy `kimi-cli` (`~/.kimi`) is not supported
+  - [OpenCode](https://opencode.ai/) - verified with 2.2.5; v2 config schema only
+  - ZCode - verified against `zcode-app-cli@3.18.1-46`; ZCode Desktop is not supported
 - The gateway must expose `GET /v1/models` and, for Codex, `GET /v1/codex/models`
 
 ## Installation
@@ -98,6 +104,39 @@ magpick claude       # same as above
 magpick codex        # interactive model selection → launch Codex
 ```
 
+### Launch Pi
+
+```bash
+magpick pi
+```
+
+Pi gets an isolated `PI_CODING_AGENT_DIR` containing your existing settings, auth, MCP, extensions, skills and sessions, plus a generated `models.json` for the selected model.
+
+### Launch Kimi Code
+
+```bash
+magpick kimi
+magpick kimi-code    # alias
+```
+
+Kimi Code reads the model from `KIMI_MODEL_*` environment variables, so magpick does not write a config file and your `~/.kimi-code` sessions and settings stay untouched.
+
+### Launch OpenCode
+
+```bash
+magpick opencode
+```
+
+magpick passes a session-scoped `OPENCODE_CONFIG_CONTENT`; your global and project OpenCode configs are merged normally.
+
+### Launch ZCode
+
+```bash
+magpick zcode
+```
+
+magpick writes an isolated provider file and passes it through `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`. Your ZCode CLI settings, MCP servers, hooks, plugins, permissions and sessions are left in place.
+
 ### Keyboard shortcuts
 
 | Key | Function |
@@ -119,6 +158,12 @@ magpick --print "Explain this repository"
 
 # Codex CLI
 magpick codex --full-auto
+
+# Pi, Kimi Code, OpenCode, ZCode
+magpick pi --continue
+magpick kimi -c
+magpick opencode --continue
+magpick zcode --prompt "Explain this repository"
 ```
 
 magpick's own flags (`--gateway`, `--json`, `--clear`) are stripped before forwarding. When the target CLI needs an argument with the same name, put `--` in front of it: everything after `--` is forwarded untouched, and the `--` itself is not passed on.
@@ -132,6 +177,10 @@ magpick codex -- --json     # --json reaches Codex, not magpick
 ```bash
 magpick --json
 magpick codex --json
+magpick pi --json
+magpick kimi --json
+magpick opencode --json
+magpick zcode --json
 ```
 
 Prints `{ agent, gateway, models }` after protocol filtering and history sorting, then exits without launching.
@@ -149,7 +198,7 @@ magpick --gateway=http://192.168.1.10:3425
 magpick --clear
 ```
 
-Removes `~/.claude/magpick-*.settings.json` and `~/.magpick/codex/*`. Global Claude/Codex configs, Magpie configs and `~/.magpick-history` are kept.
+Removes `~/.claude/magpick-*.settings.json` and `~/.magpick/{codex,pi,zcode}/*`. Kimi Code and OpenCode do not generate files. Global agent configs, Magpie configs and `~/.magpick-history` are kept.
 
 ### Help
 
@@ -158,7 +207,7 @@ magpick --help
 magpick codex --help     # magpick's help for the codex subcommand
 ```
 
-For the target CLI's own help, call it directly: `claude --help` / `codex --help`.
+For the target CLI's own help, call it directly: `claude --help`, `codex --help`, `pi --help`, `kimi --help`, `opencode --help` or `zcode --help`.
 
 ## How it works
 
@@ -181,6 +230,30 @@ Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `C
 magpick writes `~/.magpick/codex/<slug>-<hash>/magpie-models.json` - the catalog fetched from `GET /v1/codex/models` - then launches `codex` with per-process `-c` overrides for `model_provider`, `model`, `model_catalog_json` and a `[model_providers.magpick]` provider pointing at the gateway.
 
 `CODEX_HOME` is left alone, so magpick uses the same Codex home as a direct `codex` invocation: plugins (including plugin-provided MCP servers such as `context-mode`), MCP servers, skills, hooks, `AGENTS.md` and session history are all shared. Only the model selection differs. Inherited `CODEX_HOME` values pointing inside `~/.magpick/codex` are ignored so sessions launched by older magpick versions do not leak their isolated home.
+
+### Pi
+
+Pi replaces its entire agent directory when `PI_CODING_AGENT_DIR` is set. magpick therefore mirrors your existing `~/.pi/agent` (or the directory you configured) into `~/.magpick/pi/<slug>-<hash>/` using symlinks, skips `models.json` and `models-store.json`, and writes a generated `models.json` with a single `magpie` provider. Settings, auth, MCP servers, extensions, skills and other resources stay shared, while sessions continue to use the original `sessions` directory. magpick then launches `pi --provider magpie --model <model-id>`.
+
+The provider uses `anthropic-messages`, `openai-responses` or `openai-completions` depending on the protocol chosen for the model. The generated file is mode `0600`.
+
+### Kimi Code
+
+magpick does not write any files. It sets the temporary model environment variables (`KIMI_MODEL_NAME`, `KIMI_MODEL_API_KEY`, `KIMI_MODEL_PROVIDER_TYPE`, `KIMI_MODEL_BASE_URL`, context/output limits, display name and capabilities) and launches `kimi`. Kimi Code keeps using your existing `~/.kimi-code` configuration, hooks, MCP servers, skills and sessions.
+
+Kimi Code has no OpenAI Responses provider type, so Responses-only models are filtered out of its list. Models that natively serve Chat Completions or Anthropic Messages remain selectable.
+
+### OpenCode
+
+magpick passes the selected provider and model through `OPENCODE_CONFIG_CONTENT`, which OpenCode merges on top of your global and project configs. No file is written. The provider package is `@ai-sdk/openai-compatible`, `@ai-sdk/openai` or `@ai-sdk/anthropic` depending on the selected protocol, and reasoning levels become model variants for Chat Completions and Responses models.
+
+This uses the OpenCode v2 config schema (`providers`, `package`, `settings`). It was verified with OpenCode 2.2.5; v1 is not supported.
+
+### ZCode
+
+magpick writes `~/.magpick/zcode/<slug>-<hash>/provider_config.json` and launches `zcode` with `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE` pointing at it. The file defines a `magpie` provider, its API type and base URL, the selected model and the default model selection.
+
+`ZCODE_CLI_SETTINGS_FILE` is not overridden, so ZCode keeps using your own MCP servers, hooks, plugins, permissions and session database. The ZCode provider API type is `openai-chat-completions`, `openai-responses` or `anthropic-messages` depending on the model's protocol.
 
 ### Preview panel
 
@@ -216,7 +289,18 @@ Each row reads `model name · provider`, with the provider or `routing group` su
  GPT-6 Astra · agentrouter
 ```
 
-Because the agent is already known, the picker only lists models that serve that agent's protocol natively - `/v1/messages` for Claude Code, `/v1/responses` for Codex. Routing groups (`auto/...`) have no protocol of their own since Magpie picks a member per request, so they are always listed.
+Because the agent is already known, the picker only lists models that natively serve at least one of that agent's protocols:
+
+| Agent | Native endpoints |
+|-------|------------------|
+| Claude Code | `/v1/messages` |
+| Codex | `/v1/responses` |
+| Pi | `/v1/chat/completions`, `/v1/responses`, `/v1/messages` |
+| Kimi Code | `/v1/chat/completions`, `/v1/messages` |
+| OpenCode | `/v1/chat/completions`, `/v1/responses`, `/v1/messages` |
+| ZCode | `/v1/chat/completions`, `/v1/responses`, `/v1/messages` |
+
+Protocol priority is Chat Completions, then Responses, then Messages. Routing groups (`auto/...`) have no protocol of their own since Magpie picks a member per request, so they are always listed and use the agent's default protocol (Chat Completions for Pi, Kimi Code, OpenCode and ZCode).
 
 The list is also de-duplicated. Magpie serves the same entry under several ids - a routing group as `auto/<name>` plus a bare alias, a model as `provider/model` plus a short alias - so magpick keeps one row per (provider, display name), preferring `provider/model`, then `auto/<name>`, then the bare alias. Same-named models from different providers stay separate.
 
@@ -258,8 +342,11 @@ Create the key in Magpie. Loopback requests use the local `magpie` token and nee
 | `Cannot reach Magpie gateway at <url>` | Gateway not running, or wrong address | Start Magpie (menu bar app, `magpie serve`, `magpie daemon`), or pass `--gateway <url>` |
 | `Magpie returned HTTP 401` | Remote gateway without a key | `export MAGPIE_GATEWAY_KEY=<key>` |
 | `Magpie returned no models` | No provider or model enabled in Magpie | Add a provider and enable at least one model |
-| `No models natively serve the ... API` | Nothing enabled exposes that protocol | Enable a model whose `native_endpoints` include `/v1/messages` (Claude Code) or `/v1/responses` (Codex) |
+| `No models natively serve ...` | Nothing enabled exposes a protocol that agent supports | Check the agent/endpoint table above and enable a matching model in Magpie |
 | `Magpie returned an invalid Codex catalog` | Magpie too old, or `/v1/codex/models` missing | Update Magpie |
+| Target CLI not found | The CLI is not installed or not on `PATH` | Install it, or run `which <cli>` in the same login shell |
+| OpenCode rejects the generated config | OpenCode version uses the v1 schema | Upgrade to OpenCode 2.2.5 or newer |
+| Kimi Code ignores the selected model | Using the legacy `kimi-cli` | Install the new Kimi Code CLI (`kimi`, `~/.kimi-code`) |
 | A model is missing from the list | Filtered out by protocol, or merged into a duplicate row | Check `magpick --json`; groups are always listed, same-provider duplicates collapse into one row |
 | Nothing matches while typing | Search is too narrow | Clear the search box |
 
@@ -298,9 +385,9 @@ npm run typecheck
 ## Safety
 
 - magpick never reads provider API keys; it only reads the gateway's model catalog.
-- It never writes `~/.claude/settings.json` or `~/.codex/config.toml`.
+- It never writes the user's global agent config (`~/.claude/settings.json`, `~/.codex/config.toml`, `~/.pi/agent/models.json`, `~/.kimi-code/config.toml`, OpenCode configs or ZCode CLI settings).
 - Generated files are written with mode `0600`.
-- `magpick --clear` removes only `~/.claude/magpick-*.settings.json` and `~/.magpick/codex/`.
+- `magpick --clear` removes only `~/.claude/magpick-*.settings.json` and `~/.magpick/{codex,pi,zcode}/`.
 
 ## Links
 

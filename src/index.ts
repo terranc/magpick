@@ -15,14 +15,17 @@ import {
   resolveGatewayUrl,
 } from './gateway.js';
 import { loadHistory, saveToHistory, sortByHistory } from './history.js';
-import { clearClaudeSettings, createClaudeSettings } from './claude-settings.js';
 import {
-  CODEX_GATEWAY_KEY_ENV,
-  buildCodexOverrides,
-  clearCodexConfigs,
-  createCodexCatalog,
-  resolveCodexHomeOverride,
-} from './codex-settings.js';
+  AGENTS,
+  agentLabel,
+  prepareLaunch,
+  protocolEndpoint,
+  resolveProtocol,
+} from './agents/index.js';
+import { clearClaudeSettings } from './claude-settings.js';
+import { clearCodexConfigs } from './codex-settings.js';
+import { clearPiConfigs } from './pi-settings.js';
+import { clearZcodeConfigs } from './zcode-settings.js';
 import type { AgentType, ModelEntry } from './types.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,9 +43,11 @@ const program = new Command();
 
 program
   .name('magpick')
-  .description('Session-scoped model picker for the Magpie gateway')
+  .description(
+    'Session-scoped model picker for Claude Code, Codex, Pi, Kimi Code, OpenCode and ZCode'
+  )
   .version(pkg.version)
-  .option('--clear', 'Remove magpick-generated Claude and Codex configs')
+  .option('--clear', 'Remove all magpick-generated configs')
   .option('--gateway <url>', 'Magpie gateway URL (default: http://127.0.0.1:3425)')
   .option('--json', 'Print the model list as JSON without launching')
   .enablePositionalOptions();
@@ -64,7 +69,10 @@ program
   .passThroughOptions()
   .action(async () => {
     const index = process.argv.indexOf('claude');
-    await runWithType('claude', stripOwnFlags(process.argv.slice(index + 1)));
+    await runWithType(
+      'claude',
+      stripOwnFlags(process.argv.slice(index + 1))
+    );
   });
 
 program
@@ -76,6 +84,47 @@ program
   .action(async () => {
     const index = process.argv.indexOf('codex');
     await runWithType('codex', stripOwnFlags(process.argv.slice(index + 1)));
+  });
+
+program
+  .command('pi')
+  .description('Launch Pi with a Magpie model')
+  .allowUnknownOption()
+  .allowExcessArguments()
+  .passThroughOptions()
+  .action(async () => {
+    await runWithType('pi', argsAfterSubcommand(['pi']));
+  });
+
+program
+  .command('kimi')
+  .alias('kimi-code')
+  .description('Launch Kimi Code with a Magpie model')
+  .allowUnknownOption()
+  .allowExcessArguments()
+  .passThroughOptions()
+  .action(async () => {
+    await runWithType('kimi', argsAfterSubcommand(['kimi', 'kimi-code']));
+  });
+
+program
+  .command('opencode')
+  .description('Launch OpenCode with a Magpie model')
+  .allowUnknownOption()
+  .allowExcessArguments()
+  .passThroughOptions()
+  .action(async () => {
+    await runWithType('opencode', argsAfterSubcommand(['opencode']));
+  });
+
+program
+  .command('zcode')
+  .description('Launch ZCode with a Magpie model')
+  .allowUnknownOption()
+  .allowExcessArguments()
+  .passThroughOptions()
+  .action(async () => {
+    await runWithType('zcode', argsAfterSubcommand(['zcode']));
   });
 
 program.parse();
@@ -99,16 +148,19 @@ async function runWithType(agent: AgentType, args: string[]): Promise<void> {
       );
     }
 
-    // The agent is already known, so only surface models that can serve its
-    // protocol. Routing groups carry no protocol of their own (Magpie picks the
-    // member per request), so they always stay.
+    // The agent is already known, so only surface models that can natively
+    // serve at least one of its protocols. Routing groups carry no protocol of
+    // their own (Magpie picks the member per request), so they always stay.
     const candidates = models.filter(
-      (model) => model.isGroup || isNativeFor(agent, model)
+      (model) => resolveProtocol(agent, model) !== undefined
     );
 
     if (candidates.length === 0) {
+      const endpoints = AGENTS[agent].protocols
+        .map((protocol) => protocolEndpoint(protocol))
+        .join(', ');
       throw new Error(
-        `No models natively serve the ${agentLabel(agent)} API. ` +
+        `No models natively serve ${agentLabel(agent)} (supported: ${endpoints}). ` +
           'Enable one in Magpie, or check that its /v1/models reports native_endpoints.'
       );
     }
@@ -134,11 +186,22 @@ async function runWithType(agent: AgentType, args: string[]): Promise<void> {
     const selected = await pickModel(agent, gatewayUrl, sorted);
     await saveToHistory(agent, selected.id);
 
-    if (agent === 'claude') {
-      await launchClaude(selected, gatewayUrl, args);
-    } else {
-      await launchCodex(selected, gatewayUrl, args);
+    const protocol = resolveProtocol(agent, selected);
+    if (!protocol) {
+      throw new Error(`Cannot resolve a protocol for ${selected.id}.`);
     }
+
+    const plan = await prepareLaunch(
+      agent,
+      selected,
+      protocol,
+      gatewayUrl,
+      getGatewayKey()
+    );
+    const finalArgs = [...(plan.prependArgs ?? []), ...args];
+
+    console.log(`🚀 Starting ${agentLabel(agent)} with model: ${selected.id}`);
+    await spawnCli(AGENTS[agent].bin, finalArgs, plan.env);
   } catch (error) {
     console.error('Error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
@@ -173,60 +236,21 @@ function pickModel(
   });
 }
 
-async function launchClaude(
-  model: ModelEntry,
-  gatewayUrl: string,
-  args: string[]
-): Promise<void> {
-  const settingsPath = await createClaudeSettings(
-    model,
-    gatewayUrl,
-    getGatewayKey()
-  );
-
-  const finalArgs = [`--settings=${settingsPath}`, ...args];
-  console.log(`🚀 Starting Claude Code with model: ${model.id}`);
-
-  await spawnCli('claude', finalArgs, {
-    ANTHROPIC_BASE_URL: gatewayUrl,
-    ANTHROPIC_AUTH_TOKEN: getGatewayKey(),
-    ANTHROPIC_MODEL: model.id,
-  });
-}
-
-async function launchCodex(
-  model: ModelEntry,
-  gatewayUrl: string,
-  args: string[]
-): Promise<void> {
-  const catalogPath = await createCodexCatalog(model, gatewayUrl);
-  const overrides = buildCodexOverrides(model, gatewayUrl, catalogPath);
-
-  console.log(`🚀 Starting Codex with model: ${model.id}`);
-
-  await spawnCli('codex', [...overrides, ...args], {
-    CODEX_HOME: resolveCodexHomeOverride(process.env.CODEX_HOME),
-    [CODEX_GATEWAY_KEY_ENV]: getGatewayKey(),
-  });
-}
-
 async function clearGenerated(): Promise<void> {
-  const [claudeRemoved, codexRemoved] = await Promise.all([
-    clearClaudeSettings(),
-    clearCodexConfigs(),
-  ]);
-  const total = claudeRemoved + codexRemoved;
+  const [claudeRemoved, codexRemoved, piRemoved, zcodeRemoved] =
+    await Promise.all([
+      clearClaudeSettings(),
+      clearCodexConfigs(),
+      clearPiConfigs(),
+      clearZcodeConfigs(),
+    ]);
+  const total = claudeRemoved + codexRemoved + piRemoved + zcodeRemoved;
 
   if (total > 0) {
     console.log(`✓ Cleared ${total} magpick config(s)`);
   } else {
     console.log('No magpick configs found');
   }
-}
-
-function isNativeFor(agent: AgentType, model: ModelEntry): boolean {
-  const required = agent === 'claude' ? '/v1/messages' : '/v1/responses';
-  return model.nativeEndpoints.includes(required);
 }
 
 /**
@@ -294,8 +318,15 @@ function stripOwnFlags(args: string[]): string[] {
   return result;
 }
 
-function agentLabel(agent: AgentType): string {
-  return agent === 'claude' ? 'Claude' : 'Codex';
+function argsAfterSubcommand(names: string[]): string[] {
+  const argv = process.argv.slice(2);
+  const index = argv.findIndex((arg) => names.includes(arg));
+
+  if (index === -1) {
+    return stripOwnFlags(argv);
+  }
+
+  return stripOwnFlags(argv.slice(index + 1));
 }
 
 /**
@@ -330,6 +361,10 @@ async function spawnCli(
       delete spawnEnv[key];
     }
   }
+
+  // Ink leaves stdin flowing after unmount. A parent still draining fd 0 would
+  // steal terminal capability replies (OSC 7501) from the child agent.
+  process.stdin.pause();
 
   const child = userShell
     ? spawn(

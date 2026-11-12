@@ -1,8 +1,8 @@
 import { chmod, mkdir, readFile, readdir, unlink, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
-import { createHash } from 'crypto';
 import path from 'path';
 import os from 'os';
+import { modelSlug } from './model-slug.js';
 import type { ModelEntry } from './types.js';
 
 const CLAUDE_DIR = path.join(os.homedir(), '.claude');
@@ -126,16 +126,6 @@ async function readSettings(filePath: string): Promise<ClaudeSettings> {
   } catch {
     return {};
   }
-}
-
-function modelSlug(modelId: string): string {
-  const readable = modelId
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64);
-  const hash = createHash('sha1').update(modelId).digest('hex').slice(0, 8);
-  return `${readable || 'model'}-${hash}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

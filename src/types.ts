@@ -1,4 +1,17 @@
-export type AgentType = 'claude' | 'codex';
+export type AgentType =
+  | 'claude'
+  | 'codex'
+  | 'pi'
+  | 'kimi'
+  | 'opencode'
+  | 'zcode';
+
+export type WireProtocol = 'messages' | 'responses' | 'chat';
+
+export interface LaunchPlan {
+  env: Record<string, string | undefined>;
+  prependArgs?: string[];
+}
 
 /**
  * One selectable row: a provider model or a Magpie routing group.

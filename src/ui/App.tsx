@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Text, useApp, useInput } from 'ink';
 import TextInput from 'ink-text-input';
+import { agentLabel } from '../agents/registry.js';
 import type { AgentType, ModelEntry } from '../types.js';
 
 const PAGE_SIZE = 10;
@@ -262,8 +263,4 @@ function formatTokens(value: number): string {
 
 function trimZero(value: string): string {
   return value.replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
-}
-
-function agentLabel(agent: AgentType): string {
-  return agent === 'claude' ? 'Claude Code' : 'Codex';
 }
