@@ -18,6 +18,7 @@ import type { LaunchPlan, ModelEntry, WireProtocol } from './types.js';
 const PI_CONFIG_BASE = path.join(os.homedir(), '.magpick', 'pi');
 const DEFAULT_AGENT_DIR = path.join(os.homedir(), '.pi', 'agent');
 const SKIPPED_FILES = new Set(['models.json', 'models-store.json']);
+const PI_INPUT_MODALITIES = new Set(['text', 'image']);
 
 type PiApi =
   | 'anthropic-messages'
@@ -134,8 +135,7 @@ function buildPiModels(
     id: model.id,
     name: model.displayName,
     reasoning: model.reasoningLevels.length > 0,
-    input:
-      model.inputModalities.length > 0 ? model.inputModalities : ['text'],
+    input: readPiInputs(model),
   };
 
   if (model.contextWindow !== undefined) {
@@ -162,6 +162,19 @@ function buildPiModels(
       },
     },
   };
+}
+
+function readPiInputs(model: ModelEntry): string[] {
+  const inputs = ['text'];
+
+  for (const modality of model.inputModalities) {
+    const normalized = modality.toLowerCase();
+    if (PI_INPUT_MODALITIES.has(normalized) && !inputs.includes(normalized)) {
+      inputs.push(normalized);
+    }
+  }
+
+  return inputs;
 }
 
 function buildThinkingLevelMap(levels: string[]): Record<string, string | null> {

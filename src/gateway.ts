@@ -146,15 +146,21 @@ function dedupeModels(models: ModelEntry[]): ModelEntry[] {
 }
 
 /**
- * 0 = canonical `provider/model` or `auto/<name>`
- * 1 = other qualified id such as `<gateway>/provider/model`
+ * 0 = canonical `provider/model` or a gateway-qualified group such as
+ *     `<gateway>/auto/<name>`
+ * 1 = short group id (`auto/<name>`, `group/<name>`) or other qualified id
  * 2 = bare alias
  */
 function canonicalRank(model: ModelEntry): number {
   if (model.isGroup) {
-    if (model.id.startsWith('auto/') || model.id.startsWith('group/')) {
+    if (/^[^/]+\/(auto|group)\//.test(model.id)) {
       return 0;
     }
+
+    if (model.id.startsWith('auto/') || model.id.startsWith('group/')) {
+      return 1;
+    }
+
     return model.id.includes('/') ? 1 : 2;
   }
 

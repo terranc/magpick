@@ -302,7 +302,7 @@ magpick 写入 `~/.magpick/zcode/<slug>-<hash>/provider_config.json`，并通过
 
 协议优先级为 Chat Completions、Responses、Messages。路由组（`auto/...`）本身没有协议，由 Magpie 在每次请求时选择成员，因此始终显示，并使用 agent 的默认协议（Pi、Kimi Code、OpenCode、ZCode 均使用 Chat Completions）。
 
-列表还会去重。Magpie 会用多个 id 提供同一条目 - 路由组同时是 `auto/<name>` 和裸别名，模型同时是 `provider/model` 和短别名 - 所以 magpick 按（服务商，显示名）保留一行，优先 `provider/model`，其次 `auto/<name>`，最后是裸别名。不同服务商的同名模型仍然分开显示。
+列表还会去重。Magpie 会用多个 id 提供同一条目 - 路由组同时是 `<gateway>/auto/<name>`、`auto/<name>` 和裸别名，模型同时是 `provider/model` 和短别名 - 所以 magpick 按（服务商，显示名）保留一行。模型优先 `provider/model`；路由组优先网关限定的 `<gateway>/auto/<name>` 或 `<gateway>/group/<name>`，其次短 group id，最后是裸别名。使用限定 id 是因为网关会把某些短 id（例如 `auto/free`）误解析为 `group/auto-free` 并拒绝。不同服务商的同名模型仍然分开显示。
 
 ## 环境变量
 

@@ -302,7 +302,7 @@ Because the agent is already known, the picker only lists models that natively s
 
 Protocol priority is Chat Completions, then Responses, then Messages. Routing groups (`auto/...`) have no protocol of their own since Magpie picks a member per request, so they are always listed and use the agent's default protocol (Chat Completions for Pi, Kimi Code, OpenCode and ZCode).
 
-The list is also de-duplicated. Magpie serves the same entry under several ids - a routing group as `auto/<name>` plus a bare alias, a model as `provider/model` plus a short alias - so magpick keeps one row per (provider, display name), preferring `provider/model`, then `auto/<name>`, then the bare alias. Same-named models from different providers stay separate.
+The list is also de-duplicated. Magpie serves the same entry under several ids - a routing group as `<gateway>/auto/<name>`, `auto/<name>` and a bare alias, a model as `provider/model` plus a short alias - so magpick keeps one row per (provider, display name). It prefers `provider/model` for models and gateway-qualified `<gateway>/auto/<name>` or `<gateway>/group/<name>` for routing groups, then the short group id, then the bare alias. Qualified group ids matter because the gateway rejects some short ids (for example `auto/free`) as ambiguous. Same-named models from different providers stay separate.
 
 ## Environment variables
 
