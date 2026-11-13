@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- Codex launches now pass `--no-daemon` when supported (Codex 0.156+), avoiding the "Running without the shared background server" warning caused by the embedded-only `-c` model overrides. The flag is skipped when the user already passed it or uses `--remote`.
+
 ## [0.2.1] - 2026-11-13
 
 ### Fixed

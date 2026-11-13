@@ -196,7 +196,8 @@ async function runWithType(agent: AgentType, args: string[]): Promise<void> {
       selected,
       protocol,
       gatewayUrl,
-      getGatewayKey()
+      getGatewayKey(),
+      args
     );
     const finalArgs = [...(plan.prependArgs ?? []), ...args];
 

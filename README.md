@@ -229,6 +229,8 @@ Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `C
 
 magpick writes `~/.magpick/codex/<slug>-<hash>/magpie-models.json` - the catalog fetched from `GET /v1/codex/models` - then launches `codex` with per-process `-c` overrides for `model_provider`, `model`, `model_catalog_json` and a `[model_providers.magpick]` provider pointing at the gateway.
 
+On Codex 0.156+, magpick passes `--no-daemon` so the embedded-only `-c` overrides start without Codex's shared-background-server warning. The flag is omitted when you pass `--no-daemon` yourself or use `--remote`.
+
 `CODEX_HOME` is left alone, so magpick uses the same Codex home as a direct `codex` invocation: plugins (including plugin-provided MCP servers such as `context-mode`), MCP servers, skills, hooks, `AGENTS.md` and session history are all shared. Only the model selection differs. Inherited `CODEX_HOME` values pointing inside `~/.magpick/codex` are ignored so sessions launched by older magpick versions do not leak their isolated home.
 
 ### Pi

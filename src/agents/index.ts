@@ -2,6 +2,7 @@ import { createClaudeSettings } from '../claude-settings.js';
 import {
   CODEX_GATEWAY_KEY_ENV,
   buildCodexOverrides,
+  codexNoDaemonArgs,
   createCodexCatalog,
   resolveCodexHomeOverride,
 } from '../codex-settings.js';
@@ -21,7 +22,8 @@ export async function prepareLaunch(
   model: ModelEntry,
   protocol: WireProtocol,
   gatewayUrl: string,
-  gatewayKey: string
+  gatewayKey: string,
+  args: string[] = []
 ): Promise<LaunchPlan> {
   switch (agent) {
     case 'claude': {
@@ -45,7 +47,10 @@ export async function prepareLaunch(
       const catalogPath = await createCodexCatalog(model, gatewayUrl);
 
       return {
-        prependArgs: buildCodexOverrides(model, gatewayUrl, catalogPath),
+        prependArgs: [
+          ...codexNoDaemonArgs(args),
+          ...buildCodexOverrides(model, gatewayUrl, catalogPath),
+        ],
         env: {
           CODEX_HOME: resolveCodexHomeOverride(process.env.CODEX_HOME),
           [CODEX_GATEWAY_KEY_ENV]: gatewayKey,

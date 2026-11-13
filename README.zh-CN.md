@@ -229,6 +229,8 @@ env.ANTHROPIC_SMALL_FAST_MODEL
 
 magpick 写入 `~/.magpick/codex/<slug>-<hash>/magpie-models.json`（从 `GET /v1/codex/models` 获取的模型目录），随后通过进程级 `-c` 覆盖 `model_provider`、`model`、`model_catalog_json`，并注入指向网关的 `[model_providers.magpick]`。
 
+在 Codex 0.156+ 上，magpick 会传入 `--no-daemon`，让只能以 embedded 模式运行的 `-c` 覆盖不再触发共享后台服务警告。如果你自己传了 `--no-daemon` 或使用 `--remote`，magpick 不会重复添加。
+
 `CODEX_HOME` 保持不变，因此 magpick 与直接运行 `codex` 使用同一个 Codex home：插件（包括 `context-mode` 这类由插件提供的 MCP）、MCP server、skills、hooks、`AGENTS.md` 和会话历史全部共享，只有模型选择不同。继承自旧版 magpick、指向 `~/.magpick/codex` 内部的 `CODEX_HOME` 会被忽略，避免旧会话把隔离目录继续传下去。
 
 ### Pi

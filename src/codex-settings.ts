@@ -1,5 +1,6 @@
 import { chmod, mkdir, readdir, rm, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import os from 'os';
 import { fetchCodexCatalog } from './gateway.js';
@@ -8,6 +9,9 @@ import type { ModelEntry } from './types.js';
 
 const CODEX_BASE = path.join(os.homedir(), '.magpick', 'codex');
 const PROVIDER_ID = 'magpick';
+const CODEX_NO_DAEMON_MIN_VERSION = [0, 156, 0] as const;
+
+let codexNoDaemonSupport: boolean | undefined;
 
 export const CODEX_GATEWAY_KEY_ENV = 'MAGPIE_GATEWAY_KEY';
 
@@ -90,6 +94,83 @@ export function buildCodexOverrides(
     '-c',
     `model_providers.${PROVIDER_ID}.http_headers={"x-openai-actor-authorization"="magpie"}`,
   ];
+}
+
+/**
+ * Codex 0.156+ treats `-c` overrides as an embedded-only session and warns
+ * when the shared background server is skipped. `--no-daemon` makes that
+ * choice explicit without changing the effective configuration.
+ */
+export function codexNoDaemonArgs(args: string[]): string[] {
+  if (
+    !supportsCodexNoDaemon() ||
+    args.includes('--no-daemon') ||
+    args.some((arg) => arg === '--remote' || arg.startsWith('--remote='))
+  ) {
+    return [];
+  }
+
+  return ['--no-daemon'];
+}
+
+function supportsCodexNoDaemon(): boolean {
+  if (codexNoDaemonSupport !== undefined) {
+    return codexNoDaemonSupport;
+  }
+
+  const version = readCodexVersion();
+  if (version) {
+    codexNoDaemonSupport = isAtLeastVersion(
+      version,
+      CODEX_NO_DAEMON_MIN_VERSION
+    );
+  } else {
+    codexNoDaemonSupport = false;
+  }
+
+  return codexNoDaemonSupport;
+}
+
+function readCodexVersion(): string | undefined {
+  const options = {
+    encoding: 'utf-8' as const,
+    stdio: ['ignore', 'pipe', 'ignore'] as ['ignore', 'pipe', 'ignore'],
+    timeout: 5000,
+  };
+  const userShell = process.env.SHELL;
+
+  try {
+    const output = userShell
+      ? execFileSync(userShell, ['-l', '-c', 'codex --version'], options)
+      : execFileSync('codex', ['--version'], {
+          ...options,
+          shell: process.platform === 'win32',
+        });
+    return output.trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function isAtLeastVersion(
+  output: string,
+  minimum: readonly [number, number, number]
+): boolean {
+  const match = output.match(/(\d+)\.(\d+)\.(\d+)/);
+  if (!match) {
+    return false;
+  }
+
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+
+  return (
+    major > minimum[0] ||
+    (major === minimum[0] &&
+      (minor > minimum[1] ||
+        (minor === minimum[1] && patch >= minimum[2])))
+  );
 }
 
 function tomlString(value: string): string {
