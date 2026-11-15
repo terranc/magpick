@@ -221,9 +221,22 @@ env.ANTHROPIC_BASE_URL
 env.ANTHROPIC_AUTH_TOKEN
 env.ANTHROPIC_DEFAULT_{HAIKU,SONNET,OPUS,FABLE}_MODEL
 env.ANTHROPIC_SMALL_FAST_MODEL
+env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 ```
 
-Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is set from the context window the model reports, capped at 1M, so large-context models are not held to Claude Code's 200K default for unrecognized model ids. Then magpick launches `claude --settings=<file>`. The global settings file is never modified.
+Any inherited `env.ANTHROPIC_MODEL` is cleared so the top-level `model` wins. `CLAUDE_CODE_MAX_CONTEXT_TOKENS` is set from the context window the model reports, capped at 1M, so large-context models are not held to Claude Code's 200K default for unrecognized model ids. `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` is enabled by default and can be removed or overridden via `~/.magpick/config.json`:
+
+```json
+{
+  "claude": {
+    "env": {
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": null
+    }
+  }
+}
+```
+
+Then magpick launches `claude --settings=<file>`. The global settings file is never modified.
 
 ### Codex
 

@@ -1,4 +1,5 @@
 import { createClaudeSettings } from '../claude-settings.js';
+import { loadConfig, resolveClaudeEnv } from '../config.js';
 import {
   CODEX_GATEWAY_KEY_ENV,
   buildCodexOverrides,
@@ -27,15 +28,19 @@ export async function prepareLaunch(
 ): Promise<LaunchPlan> {
   switch (agent) {
     case 'claude': {
+      const config = await loadConfig();
+      const claudeEnv = resolveClaudeEnv(config);
       const settingsPath = await createClaudeSettings(
         model,
         gatewayUrl,
-        gatewayKey
+        gatewayKey,
+        claudeEnv
       );
 
       return {
         prependArgs: [`--settings=${settingsPath}`],
         env: {
+          ...claudeEnv,
           ANTHROPIC_BASE_URL: gatewayUrl,
           ANTHROPIC_AUTH_TOKEN: gatewayKey,
           ANTHROPIC_MODEL: model.id,

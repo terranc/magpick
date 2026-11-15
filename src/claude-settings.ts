@@ -20,7 +20,8 @@ interface ClaudeSettings {
 export async function createClaudeSettings(
   model: ModelEntry,
   gatewayUrl: string,
-  gatewayKey: string
+  gatewayKey: string,
+  extraEnv: Record<string, string> = {}
 ): Promise<string> {
   await mkdir(CLAUDE_DIR, { recursive: true });
 
@@ -32,6 +33,8 @@ export async function createClaudeSettings(
       delete env[key];
     }
   }
+
+  Object.assign(env, extraEnv);
 
   env.ANTHROPIC_BASE_URL = gatewayUrl;
   env.ANTHROPIC_AUTH_TOKEN = gatewayKey;

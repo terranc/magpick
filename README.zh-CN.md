@@ -221,9 +221,22 @@ env.ANTHROPIC_BASE_URL
 env.ANTHROPIC_AUTH_TOKEN
 env.ANTHROPIC_DEFAULT_{HAIKU,SONNET,OPUS,FABLE}_MODEL
 env.ANTHROPIC_SMALL_FAST_MODEL
+env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
 ```
 
-继承来的 `env.ANTHROPIC_MODEL` 会被清空，让顶层的 `model` 生效。`CLAUDE_CODE_MAX_CONTEXT_TOKENS` 按模型上报的上下文窗口设置，上限 1M，避免大窗口模型被 Claude Code 对未知模型 id 的 200K 默认值限制。随后 magpick 执行 `claude --settings=<file>` 启动。全局设置文件不会被修改。
+继承来的 `env.ANTHROPIC_MODEL` 会被清空，让顶层的 `model` 生效。`CLAUDE_CODE_MAX_CONTEXT_TOKENS` 按模型上报的上下文窗口设置，上限 1M，避免大窗口模型被 Claude Code 对未知模型 id 的 200K 默认值限制。`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` 为缺省配置，如需移除或覆盖，可在 `~/.magpick/config.json` 中配置：
+
+```json
+{
+  "claude": {
+    "env": {
+      "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": null
+    }
+  }
+}
+```
+
+随后 magpick 执行 `claude --settings=<file>` 启动。全局设置文件不会被修改。
 
 ### Codex
 
